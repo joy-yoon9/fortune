@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>오늘의 운세</title>
+  <style>
+    :root { --gap:14px; }
+    body { font-family: system-ui,-apple-system,Segoe UI,Arial,Apple SD Gothic Neo,Malgun Gothic,sans-serif; max-width: 720px; margin: 48px auto; padding: 0 16px; }
+    h1 { margin: 0 0 18px; }
+    .card { background:#f7f7f8; border:1px solid #e6e6e7; border-radius:12px; padding:18px; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+    label { display:block; font-size:14px; color:#444; margin-bottom:6px; }
+    input { width:100%; padding:10px 12px; border:1px solid #d0d0d4; border-radius:8px; }
+    button { padding:11px 16px; border:0; border-radius:10px; cursor:pointer; }
+    .primary { background:#4caf50; color:#fff; }
+    .ghost { background:#fff; border:1px solid #ddd; }
+    .actions { display:flex; gap:var(--gap); margin-top:var(--gap); }
+    .result { margin-top:22px; }
+    .fortune { background:#fff; border:1px solid #ececec; border-radius:12px; padding:16px; line-height:1.6; }
+    .muted { color:#666; font-size:13px; }
+    .err { color:#c62828; font-weight:600; }
+    .ok { color:#2e7d32; font-weight:600; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>🔮 오늘의 운세</h1>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="name">이름</label>
+        <input id="name" placeholder="이름을 입력하세요" value="홍길동" />
+      </div>
+      <div>
+        <label for="birth">생년월일</label>
+        <input id="birth" type="date" value="1995-06-01" />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="go" class="primary">운세 보기</button>
+      <button id="demo" class="ghost">샘플 데이터</button>
+    </div>
+
+    <p class="muted mono" id="status">준비됨</p>
+    <div class="result" id="result"></div>
+  </div>
+
+  <script>
+    // 1) 환경에 따라 API 엔드포인트 자동 선택
+    const API = location.hostname.endsWith('github.io')
+      ? 'https://joyyoon.pythonanywhere.com/api/fortune' // GitHub Pages에서 사용
+      : '/api/fortune';                                  // PythonAnywhere 같은 도메인에서 사용
+
+    const $ = (id) => document.getElementById(id);
+    const nameEl = $('name');
+    const birthEl = $('birth');
+    const statusEl = $('status');
+    const resultEl = $('result');
+    const goBtn = $('go');
+    const demoBtn = $('demo');
+
+    function setStatus(msg, ok=true) {
+      statusEl.textContent = msg;
+      statusEl.className = 'muted mono ' + (ok ? 'ok' : 'err');
+    }
+
+    function renderResult(data) {
+      resultEl.innerHTML = `
+        <div class="fortune">
+          <div class="mono" style="margin-bottom:10px;">${data.date}</div>
+          <h2 style="margin:0 0 6px;">${data.name}님의 오늘 운세</h2>
+          ${data.love ? `<p>💕 연애운: ${data.love}</p>` : ``}
+          ${data.career ? `<p>💼 직장운: ${data.career}</p>` : ``}
+          ${data.health ? `<p>🏃 건강운: ${data.health}</p>` : ``}
+          <p>🎲 행운의 숫자: <strong>${data.lucky_number}</strong></p>
+        </div>
+      `;
+    }
+
+    async function getFortune() {
+      const name = (nameEl.value || '홍길동').trim();
+      const birthdate = birthEl.value || '1990-01-01';
+
+      setStatus('요청 중… 잠시만요.', true);
+      goBtn.disabled = true;
+
+      try {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, birthdate })
+        });
+
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        renderResult(data);
+        setStatus('완료', true);
+      } catch (err) {
+        setStatus('요청 실패: ' + err.message + ' (엔드포인트: ' + API + ')', false);
+        resultEl.textContent = '';
+      } finally {
+        goBtn.disabled = false;
+      }
+    }
+
+    // 샘플 버튼: 입력값 채우고 바로 실행
+    demoBtn.onclick = () => {
+      nameEl.value = '김테스트';
+      birthEl.value = '1999-12-31';
+      getFortune();
+    };
+    goBtn.onclick = getFortune;
+  </script>
+</body>
+</html>
